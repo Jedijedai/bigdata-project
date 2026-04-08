@@ -22,7 +22,9 @@ def process_batch(df, epoch_id):
 query = stream_df.writeStream \
     .foreachBatch(process_batch) \
     .outputMode("append") \
+    .format("parquet") \
     .trigger(processingTime="5 seconds") \
+    .option ("checkpointLocation", "logs/stream_checkpoint") \
     .start()
 
 query.awaitTermination()

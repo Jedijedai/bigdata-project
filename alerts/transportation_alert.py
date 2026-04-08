@@ -1,3 +1,4 @@
+
 def generate_alert(df):
     alerts = []
     if len(df) > 100:
