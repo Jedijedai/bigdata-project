@@ -13,3 +13,4 @@
 [2026-04-24 20:21:23,846] INFO [Broker id=0] Leader bank_topic-0 with topic id Some(fkfU8AvZQqOWDr8qxKBHNA) starts at leader epoch 0 from offset 0 with partition epoch 0, high watermark 0, ISR [0], adding replicas [] and removing replicas [] . Previous leader epoch was -1. (state.change.logger)
 [2026-04-24 20:21:23,858] INFO [Broker id=0] Finished LeaderAndIsr request in 72ms correlationId 1 from controller 0 for 1 partitions (state.change.logger)
 [2026-04-24 20:21:23,866] INFO [Broker id=0] Add 1 partitions and deleted 0 partitions from metadata cache in response to UpdateMetadata request sent by controller 0 epoch 2 with correlation id 2 (state.change.logger)
+[2026-04-24 20:37:02,031] INFO [Controller id=0 epoch=2] Sending UpdateMetadata request to brokers HashSet() for 0 partitions (state.change.logger)
