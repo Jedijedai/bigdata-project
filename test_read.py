@@ -1,0 +1,14 @@
+import pandas as pd
+import glob
+import os
+
+files = glob.glob("stream_data/realtime_output/*.parquet")
+
+valid_files = [f for f in files if os.path.getsize(f) > 0]
+
+if valid_files:
+    df = pd.concat([pd.read_parquet(f) for f in valid_files])
+    print(df.head())
+else:
+    print("Tidak ada file valid")
+
