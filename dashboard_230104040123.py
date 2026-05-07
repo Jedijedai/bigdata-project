@@ -1,85 +1,152 @@
+
 import streamlit as st
 from pyspark.sql import SparkSession
 import plotly.express as px
 from sklearn.linear_model import LinearRegression
+import pandas as pd
 import os
 
-# ==============================
-# PATH CONFIG (FIX KE SCRIPTS)
-# ==============================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "scripts/output")
-
-# ==============================
+# =========================================================
 # PAGE CONFIG
-# ==============================
-st.set_page_config(page_title="Traffic Dashboard", layout="wide")
-st.title("🚦 Smart City AI Traffic Dashboard")
+# =========================================================
 
-# ==============================
+st.set_page_config(
+    page_title="Smart Campus Dashboard",
+    layout="wide"
+)
+
+st.title("🎓 Smart Campus Attendance Analytics")
+
+# =========================================================
+# ABSOLUTE PATH
+# =========================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+
+# =========================================================
 # INIT SPARK
-# ==============================
+# =========================================================
+
 @st.cache_resource
 def get_spark():
-    return SparkSession.builder.appName("Dashboard_App").getOrCreate()
+    return SparkSession.builder \
+        .appName("Dashboard_App") \
+        .getOrCreate()
 
 spark = get_spark()
 
-# ==============================
-# LOAD DATA
-# ==============================
-def load_parquet(folder_name):
-    path = os.path.join(OUTPUT_DIR, folder_name)
-    if not os.path.exists(path):
-        st.error(f"⚠️ Folder data '{folder_name}' tidak ditemukan! Jalankan engine dulu.")
-        st.stop()
-    return spark.read.parquet(path).toPandas()
+# =========================================================
+# LOAD PARQUET
+# =========================================================
 
-pdf = load_parquet("traffic")
-pdf_time = load_parquet("traffic_time")
-pdf_ml = load_parquet("ml_data")
+try:
+    attendance_pdf = spark.read.parquet(
+        os.path.join(OUTPUT_DIR, "attendance_total")
+    ).toPandas()
 
-# ==============================
-# SIDEBAR
-# ==============================
-locations = pdf["location"].unique()
-selected_loc = st.sidebar.selectbox("Pilih Lokasi", locations)
+    time_pdf = spark.read.parquet(
+        os.path.join(OUTPUT_DIR, "attendance_time")
+    ).toPandas()
 
-filtered_pdf = pdf[pdf["location"] == selected_loc]
+    ml_pdf = spark.read.parquet(
+        os.path.join(OUTPUT_DIR, "ml_attendance")
+    ).toPandas()
 
-# ==============================
-# KPI
-# ==============================
+except Exception as e:
+    st.error(f"Gagal membaca data parquet: {e}")
+    st.stop()
+
+# =========================================================
+# SIDEBAR FILTER
+# =========================================================
+
+st.sidebar.title("📌 Filter Gedung")
+
+buildings = attendance_pdf["building"].unique()
+
+selected_building = st.sidebar.selectbox(
+    "Pilih Gedung",
+    buildings
+)
+
+# =========================================================
+# FILTER DATA
+# =========================================================
+
+filtered_attendance = attendance_pdf[
+    attendance_pdf["building"] == selected_building
+]
+
+# =========================================================
+# KPI METRICS
+# =========================================================
+
+st.subheader("📊 Key Performance Indicators")
+
 col1, col2 = st.columns(2)
 
 with col1:
-    st.metric("Total Kendaraan", int(pdf["total_vehicle"].sum()))
+    st.metric(
+        "Total Mahasiswa Semua Gedung",
+        int(attendance_pdf["total_attendance"].sum())
+    )
 
 with col2:
-    st.metric(f"Total di {selected_loc}", int(filtered_pdf["total_vehicle"].sum()))
+    st.metric(
+        f"Total Mahasiswa {selected_building}",
+        int(filtered_attendance["total_attendance"].sum())
+    )
 
-# ==============================
-# VISUALISASI
-# ==============================
-pdf_time["start_time"] = pdf_time["window"].apply(
+# =========================================================
+# VISUALIZATION
+# =========================================================
+
+st.subheader("📈 Grafik Tren Kehadiran")
+
+time_pdf["start_time"] = time_pdf["window"].apply(
     lambda x: x[0] if isinstance(x, tuple) else x.start
 )
 
-fig = px.line(pdf_time, x="start_time", y="total_vehicle", color="location")
+fig = px.line(
+    time_pdf,
+    x="start_time",
+    y="total_attendance",
+    color="building",
+    title="Tren Kehadiran Mahasiswa"
+)
+
 st.plotly_chart(fig, use_container_width=True)
 
-# ==============================
-# AI PREDICTION
-# ==============================
-st.subheader("Prediksi AI")
+# =========================================================
+# MACHINE LEARNING
+# =========================================================
 
-X = pdf_ml[["hour"]]
-y = pdf_ml["vehicle_count"]
+st.subheader("🤖 AI Prediction (Linear Regression)")
+
+X = ml_pdf[["hour"]]
+y = ml_pdf["attendance_count"]
 
 model = LinearRegression()
 model.fit(X, y)
 
-hour_input = st.slider("Pilih Jam", 0, 23, 12)
-pred = model.predict([[hour_input]])
+hour_input = st.slider(
+    "Pilih Jam Prediksi",
+    0,
+    23,
+    12
+)
 
-st.success(f"Prediksi kendaraan jam {hour_input}:00 = {int(pred[0])}")
+prediction = model.predict([[hour_input]])
+
+st.success(
+    f"Prediksi jumlah mahasiswa pada jam {hour_input}:00 adalah {int(prediction[0])} mahasiswa"
+)
+
+# =========================================================
+# DATA PREVIEW
+# =========================================================
+
+st.subheader("🗂 Preview Dataset")
+
+st.dataframe(ml_pdf.head(20))
