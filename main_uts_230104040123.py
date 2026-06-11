@@ -1,4 +1,3 @@
-
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, window, sum as _sum, hour
 from datetime import datetime, timedelta
